@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lead Queue Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1F5; --surface:#FFFFFF; --sunk:#F6F8FA; --ink:#15233A; --ink2:#4B5A70; --ink3:#7D8AA0; --line:#DCE2EA;
+  --brand:#123B5C; --hot:#C8264E; --warm:#B87B0B; --nurture:#5A6C86; --quar:#6E4FC0; --ok:#1C7C54;
+  --hot-bg:#FBE9EE; --warm-bg:#FBF2DF; --nurture-bg:#EAEEF3; --quar-bg:#EFEAFB; --ok-bg:#E3F3EC;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0E1522; --surface:#162034; --sunk:#111A2B; --ink:#E7ECF4; --ink2:#AAB6C8; --ink3:#7C8AA1; --line:#26324A;
+  --brand:#8CC3EA; --hot:#F0607F; --warm:#E3AE45; --nurture:#93A3BC; --quar:#A993F0; --ok:#4CC08C;
+  --hot-bg:#3A1A25; --warm-bg:#352914; --nurture-bg:#1E2940; --quar-bg:#281F45; --ok-bg:#15352A; }}
+:root[data-theme="dark"]{
+  --bg:#0E1522; --surface:#162034; --sunk:#111A2B; --ink:#E7ECF4; --ink2:#AAB6C8; --ink3:#7C8AA1; --line:#26324A;
+  --brand:#8CC3EA; --hot:#F0607F; --warm:#E3AE45; --nurture:#93A3BC; --quar:#A993F0; --ok:#4CC08C;
+  --hot-bg:#3A1A25; --warm-bg:#352914; --nurture-bg:#1E2940; --quar-bg:#281F45; --ok-bg:#15352A; }
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45;min-height:100%}
+button,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.app{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:100vh}
+nav.rail{background:var(--surface);border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:4px}
+.brandmark{font-weight:700;font-size:17px;letter-spacing:-.01em;padding:0 10px 18px}
+.brandmark small{display:block;font-weight:500;font-size:12.5px;color:var(--ink3);letter-spacing:0}
+.navbtn{display:flex;justify-content:space-between;align-items:center;border:0;background:none;text-align:left;padding:9px 10px;border-radius:8px;color:var(--ink2);font-weight:500}
+.navbtn[aria-current="true"]{background:var(--sunk);color:var(--ink);font-weight:600}
+.navbtn .n{font-variant-numeric:tabular-nums;font-size:13px;color:var(--ink3)}
+.clock{margin-top:auto;font-size:12.5px;color:var(--ink3);padding:10px}
+main{padding:26px 30px 60px;min-width:0}
+h1{font-size:26px;letter-spacing:-.02em;margin:0 0 4px;font-weight:700}
+.sub{color:var(--ink2);margin:0 0 20px;max-width:70ch}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px;margin-bottom:16px;flex-wrap:wrap}
+.seg button{border:0;background:none;padding:7px 14px;border-radius:7px;font-weight:600;color:var(--ink2);display:flex;gap:8px;align-items:center}
+.seg button[aria-pressed="true"]{background:var(--sunk);color:var(--ink)}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:grid;grid-template-columns:4px minmax(0,1fr) 150px 120px;gap:0 18px;align-items:center;padding:14px 18px 14px 0;border-bottom:1px solid var(--line);background:none;border-left:0;border-right:0;border-top:0;width:100%;text-align:left}
+.row:last-child{border-bottom:0}
+.row:hover{background:var(--sunk)}
+.row[aria-selected="true"]{background:var(--sunk)}
+.stripe{align-self:stretch;margin:-14px 0}
+.who{font-weight:600}
+.who span{font-weight:400;color:var(--ink2)}
+.meta{font-size:13px;color:var(--ink3);margin-top:2px}
+.why{font-size:13px;color:var(--ink2);margin-top:6px}
+.likely{font-variant-numeric:tabular-nums}
+.likely b{font-size:22px;letter-spacing:-.02em;font-weight:700}
+.likely small{display:block;font-size:12px;color:var(--ink3)}
+.bar{height:5px;border-radius:3px;background:var(--line);margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px}
+.wait{font-size:13px;text-align:right}
+.wait .late{color:var(--hot);font-weight:600}
+.wait .fine{color:var(--ok);font-weight:600}
+.wait small{display:block;color:var(--ink3)}
+.empty{padding:38px 22px;text-align:center;color:var(--ink2)}
+.panel{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--surface);border-left:1px solid var(--line);box-shadow:-16px 0 40px rgba(10,20,40,.12);transform:translateX(100%);transition:transform .22s ease;overflow-y:auto;padding:calc(22px + env(safe-area-inset-top,0px)) 24px calc(30px + env(safe-area-inset-bottom,0px));z-index:10}
+.panel.open{transform:none}
+.panel:not(.open){box-shadow:none;visibility:hidden}
+@media (prefers-reduced-motion:reduce){.panel{transition:none}}
+.close{float:right;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 11px;font-weight:500}
+.tag{display:inline-block;font-size:12.5px;font-weight:600;padding:3px 9px;border-radius:20px}
+.big{display:flex;align-items:baseline;gap:10px;margin:18px 0 4px}
+.big b{font-size:44px;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.explain{color:var(--ink2);font-size:14px;margin:0 0 18px}
+blockquote{margin:0 0 18px;padding:12px 14px;background:var(--sunk);border-radius:8px;border-left:3px solid var(--line);color:var(--ink)}
+h3{font-size:14px;margin:20px 0 8px;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td{padding:6px 0;border-bottom:1px solid var(--line)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.pos{color:var(--ok)} .neg{color:var(--hot)}
+dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px;margin:0}
+dt{color:var(--ink3)} dd{margin:0}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}
+.btn{border:1px solid var(--line);background:var(--surface);padding:9px 14px;border-radius:9px;font-weight:600}
+.btn.primary{background:var(--brand);color:var(--surface);border-color:var(--brand)}
+.flagbox{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--sunk);display:none}
+.flagbox.show{display:block}
+.flagbox label{display:block;font-size:14px;margin:6px 0}
+.flagbox select,.flagbox textarea{width:100%;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.chip{font-size:12.5px;padding:3px 9px;border-radius:20px;background:var(--quar-bg);color:var(--quar);font-weight:600}
+.qrow{padding:16px 18px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 18px;align-items:start}
+.qrow:last-child{border-bottom:0}
+.qrow p{margin:6px 0 0;font-size:14px;color:var(--ink2)}
+.qbtns{display:flex;gap:8px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.card h2{font-size:16px;margin:0 0 4px}
+.card p.note{font-size:13px;color:var(--ink3);margin:10px 0 0}
+.hbar{display:grid;grid-template-columns:90px minmax(0,1fr) 56px;gap:10px;align-items:center;font-size:14px;margin:10px 0}
+.hbar .track{height:12px;background:var(--sunk);border-radius:6px;overflow:hidden;position:relative}
+.hbar .track i{position:absolute;left:0;top:0;bottom:0;border-radius:6px}
+.hbar .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.cal{display:grid;grid-template-columns:90px minmax(0,1fr) 110px;gap:10px;align-items:center;font-size:13.5px;margin:9px 0}
+.cal .track{position:relative;height:18px;background:var(--sunk);border-radius:4px}
+.cal .p{position:absolute;top:2px;height:6px;background:var(--ink3);border-radius:3px;left:0}
+.cal .a{position:absolute;bottom:2px;height:6px;background:var(--brand);border-radius:3px;left:0}
+.legend{display:flex;gap:14px;font-size:12.5px;color:var(--ink2);margin-top:6px}
+.legend span::before{content:"";display:inline-block;width:10px;height:6px;border-radius:3px;margin-right:6px;vertical-align:middle;background:var(--c)}
+.stat{font-size:30px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.stats div small{display:block;color:var(--ink2);font-size:13px}
+.log{font-size:14px;margin:0;padding:0;list-style:none}
+.log li{padding:8px 0;border-bottom:1px solid var(--line)}
+.log li:last-child{border-bottom:0}
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;opacity:0;transition:all .2s;pointer-events:none;z-index:20}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.foot{font-size:12.5px;color:var(--ink3);margin-top:22px;max-width:75ch}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  nav.rail{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:10px 12px;position:sticky;top:0;z-index:5;gap:6px}
+  .brandmark,.clock{display:none}
+  .navbtn{white-space:nowrap;gap:8px}
+  main{padding:20px 16px 50px}
+  .row{grid-template-columns:4px minmax(0,1fr) 92px;padding-right:14px}
+  .row .wait{grid-column:2 / 4;text-align:left;margin-top:8px}
+  .qrow{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="Views">
+    <div class="brandmark">Lead Queue<small>Prototype, dummy data</small></div>
+    <button class="navbtn" data-view="queue"><span>Queue</span><span class="n" id="n-queue"></span></button>
+    <button class="navbtn" data-view="quarantine"><span>Quarantine</span><span class="n" id="n-quar"></span></button>
+    <button class="navbtn" data-view="health"><span>Model health</span><span class="n" id="n-log"></span></button>
+    <div class="clock" id="clock"></div>
+  </nav>
+  <main id="main"></main>
+</div>
+<aside class="panel" id="panel" aria-label="Lead details" aria-hidden="true"></aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const DATA = {"leads": [{"id": "L-0683", "t": "2026-09-22T14:00", "src": "Website Contact Form", "name": "Felix Garcia", "email": "felix.garcia@freemail.example", "et": "Free", "co": "Orrowmere Money", "web": "", "country": "Brazil", "prod": "KYC Verification", "msg": "Our team is building a lending product for small businesses. Need help with sandbox setup and credit rules. Timeline 2 to 3 months.", "pages": 4, "status": "", "bucket": "Nurture", "score": 38, "prob": 0.216870104386572, "reasons": "Buying intent in message.", "flags": [], "pts": {"Source": 10, "Email": 0, "Product": 5, "Engagement": 8, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0689", "t": "2026-09-22T15:59", "src": "Docs Signup", "name": "Kenji Chen", "email": "kenji.chen@hollowquaystudio.example", "et": "Company", "co": "Hollowquay Studio", "web": "https://hollowquaystudio.example", "country": "South Korea", "prod": "Banking Data API", "msg": "Need a banking data API with SLA for our budgeting app, around 11M calls per day.", "pages": 3, "status": "Open", "bucket": "Warm", "score": 45, "prob": 0.275279324065818, "reasons": "Company email. Buying intent in message.", "flags": [], "pts": {"Source": 5, "Email": 20, "Product": 5, "Engagement": 0, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0693", "t": "2026-09-22T17:58", "src": "Docs Signup", "name": "Aisha Berg", "email": "aisha.berg@inboxly.example", "et": "Free", "co": "Dunmarrow Commerce", "web": "", "country": "Nigeria", "prod": "Lending - Credit Scoring", "msg": "We raised a seed round and plan to launch a digital savings platform for SMEs. Want to discuss infrastructure.", "pages": 2, "status": "Open", "bucket": "Nurture", "score": 35, "prob": 0.13250377783229, "reasons": "High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 5, "Email": 0, "Product": 15, "Engagement": 0, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0704", "t": "2026-09-22T19:57", "src": "LinkedIn ABM", "name": "Fatima Khan", "email": "fatima.khan@ostrivostudio.example", "et": "Company", "co": "Ostrivo Studio", "web": "https://ostrivostudio.example", "country": "Canada", "prod": "Payments - Payouts", "msg": "Our team is building a lending product for small businesses. Need help with sandbox setup and credit rules. Timeline 2 to 3 months.", "pages": 4, "status": "", "bucket": "Hot", "score": 78, "prob": 0.702451683352767, "reasons": "Strong source. Company email. High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 20, "Email": 20, "Product": 15, "Engagement": 8, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0706", "t": "2026-09-22T21:56", "src": "Website Contact Form", "name": "Ananya Kim", "email": "ananya268@burnmail.example", "et": "Disposable", "co": "", "web": "", "country": "UK", "prod": "Payments - Card Issuing", "msg": "hi", "pages": 2, "status": "", "bucket": "Spam", "score": null, "prob": null, "reasons": "Flagged by spam rules", "flags": ["Disposable email", "Very short message"], "pts": {"Source": 10, "Email": 0, "Product": 15, "Engagement": 0, "Buying intent": 0, "Negative intent": 0}}, {"id": "L-0712", "t": "2026-09-22T23:55", "src": "Chat Widget", "name": "Nadia Garcia", "email": "nadia.garcia@letterdrop.example", "et": "Free", "co": "Yarrowtun Wallet", "web": "", "country": "Switzerland", "prod": "Lending - Credit Scoring", "msg": "Looking for pricing on KYC verification across 4 countries. Our current vendor keeps missing checks.", "pages": 4, "status": "Open", "bucket": "Nurture", "score": 38, "prob": 0.431925365643412, "reasons": "High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 0, "Email": 0, "Product": 15, "Engagement": 8, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0720", "t": "2026-09-23T01:54", "src": "LinkedIn ABM", "name": "Mei Nguyen", "email": "mei.nguyen@letterdrop.example", "et": "Free", "co": "Marrowgate Systems", "web": "", "country": "Nigeria", "prod": "Lending - Loan Origination", "msg": "Looking for pricing on KYC verification across 2 countries. Our current vendor keeps missing checks.", "pages": 4, "status": "Open", "bucket": "Warm", "score": 58, "prob": 0.713613663057164, "reasons": "Strong source. High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 20, "Email": 0, "Product": 15, "Engagement": 8, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0724", "t": "2026-09-23T03:54", "src": "Docs Signup", "name": "Lucas Kim", "email": "lucas.kim@plumeridgesystems.example", "et": "Company", "co": "Plumeridge Systems", "web": "https://plumeridgesystems.example", "country": "Vietnam", "prod": "Banking Data API", "msg": "We raised a seed round and plan to launch a digital savings platform for SMEs. Want to discuss infrastructure.", "pages": 6, "status": "Open", "bucket": "Warm", "score": 53, "prob": 0.808144748904065, "reasons": "Company email. Buying intent in message.", "flags": [], "pts": {"Source": 5, "Email": 20, "Product": 5, "Engagement": 8, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0727", "t": "2026-09-23T05:53", "src": "Event", "name": "Daniel Kim", "email": "daniel.kim@freemail.example", "et": "Free", "co": "Larkspindle Studio", "web": "", "country": "USA", "prod": "Lending - Credit Scoring", "msg": "Migrating from another provider for our card program, need a quote this month.", "pages": 3, "status": "", "bucket": "Warm", "score": 45, "prob": 0.324317569447872, "reasons": "High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 15, "Email": 0, "Product": 15, "Engagement": 0, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0728", "t": "2026-09-23T07:52", "src": "Event", "name": "Grace Chen", "email": "grace.chen@freemail.example", "et": "Free", "co": "Quarrytide Pay", "web": "", "country": "Singapore", "prod": "Payments - Card Issuing", "msg": "We are launching a remittance product and need a managed card issuing setup with go-live in Q4.", "pages": 3, "status": "Open", "bucket": "Warm", "score": 45, "prob": 0.158557550348725, "reasons": "High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 15, "Email": 0, "Product": 15, "Engagement": 0, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0730", "t": "2026-09-23T09:51", "src": "Docs Signup", "name": "Noah Sharma", "email": "noah801@webmail.example", "et": "Free", "co": "Rankfarrow SEO Agency", "web": "", "country": "Switzerland", "prod": "Payments - Card Issuing", "msg": "Exclusive investment opportunity with 300% returns, DM on telegram.", "pages": 1, "status": "", "bucket": "Spam", "score": null, "prob": null, "reasons": "Flagged by spam rules", "flags": ["Vendor or scam wording"], "pts": {"Source": 5, "Email": 0, "Product": 15, "Engagement": 0, "Buying intent": 0, "Negative intent": 0}}, {"id": "L-0733", "t": "2026-09-23T11:50", "src": "Docs Signup", "name": "Daniel Khan", "email": "daniel.khan@letterdrop.example", "et": "Free", "co": "Thornlacey Finance", "web": "", "country": "UAE", "prod": "Payments - Payouts", "msg": "Need a banking data API with SLA for our budgeting app, around 53M calls per day.", "pages": 1, "status": "", "bucket": "Nurture", "score": 35, "prob": 0.0261858827883713, "reasons": "High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 5, "Email": 0, "Product": 15, "Engagement": 0, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0734", "t": "2026-09-23T13:49", "src": "Website Contact Form", "name": "Ravi Berg", "email": "ravi714@hypemarrowpr.example", "et": "Company", "co": "Hypemarrow PR", "web": "https://hypemarrowpr.example", "country": "USA", "prod": "Payments - Card Issuing", "msg": "Boost your Twitter followers and Telegram members, organic fintech marketing.", "pages": 2, "status": "", "bucket": "Spam", "score": null, "prob": null, "reasons": "Flagged by spam rules", "flags": ["Vendor or scam wording"], "pts": {"Source": 10, "Email": 20, "Product": 15, "Engagement": 0, "Buying intent": 0, "Negative intent": 0}}, {"id": "L-0736", "t": "2026-09-23T15:48", "src": "Website Contact Form", "name": "Ivan Haddad", "email": "ivan363@codewhistleoutsourcing.example", "et": "Company", "co": "Codewhistle Outsourcing", "web": "https://codewhistleoutsourcing.example", "country": "Switzerland", "prod": "Other", "msg": "Boost your Twitter followers and Telegram members, organic fintech marketing.", "pages": 2, "status": "", "bucket": "Spam", "score": null, "prob": null, "reasons": "Flagged by spam rules", "flags": ["Vendor or scam wording"], "pts": {"Source": 10, "Email": 20, "Product": 0, "Engagement": 0, "Buying intent": 0, "Negative intent": 0}}, {"id": "L-0740", "t": "2026-09-23T17:48", "src": "Docs Signup", "name": "Kenji Khan", "email": "kenji.khan@marrowgatestudio.example", "et": "Company", "co": "Marrowgate Studio", "web": "https://marrowgatestudio.example", "country": "Nigeria", "prod": "KYC Verification", "msg": "We raised a seed round and plan to launch a digital savings platform for SMEs. Want to discuss infrastructure.", "pages": 1, "status": "Open", "bucket": "Warm", "score": 45, "prob": 0.0422492890277659, "reasons": "Company email. Buying intent in message.", "flags": [], "pts": {"Source": 5, "Email": 20, "Product": 5, "Engagement": 0, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0741", "t": "2026-09-23T19:47", "src": "Event", "name": "Arjun Sharma", "email": "arjun.sharma@postbox.example", "et": "Free", "co": "Quarrytide Systems", "web": "", "country": "Singapore", "prod": "Payments - Virtual Accounts", "msg": "Our team is building a lending product for small businesses. Need help with sandbox setup and credit rules. Timeline 2 to 3 months.", "pages": 5, "status": "", "bucket": "Warm", "score": 53, "prob": 0.483755718937927, "reasons": "High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 15, "Email": 0, "Product": 15, "Engagement": 8, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0742", "t": "2026-09-23T21:46", "src": "Website Contact Form", "name": "Omar Haddad", "email": "omar.haddad@pellowinbank.example", "et": "Company", "co": "Pellowin Bank", "web": "https://pellowinbank.example", "country": "UAE", "prod": "KYC Verification", "msg": "Looking for pricing on KYC verification across 4 countries. Our current vendor keeps missing checks.", "pages": 4, "status": "Open", "bucket": "Warm", "score": 58, "prob": 0.400591771524367, "reasons": "Company email. Buying intent in message.", "flags": [], "pts": {"Source": 10, "Email": 20, "Product": 5, "Engagement": 8, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0744", "t": "2026-09-23T23:45", "src": "Chat Widget", "name": "Sofia Silva", "email": "sofia542@quickdrop.example", "et": "Disposable", "co": "", "web": "", "country": "Turkey", "prod": "KYC Verification", "msg": "We offer premium SEO backlinks and guest post services for fintech websites. Reply for rates.", "pages": 1, "status": "", "bucket": "Spam", "score": null, "prob": null, "reasons": "Flagged by spam rules", "flags": ["Disposable email", "Vendor or scam wording"], "pts": {"Source": 0, "Email": 0, "Product": 5, "Engagement": 0, "Buying intent": 0, "Negative intent": 0}}, {"id": "L-0748", "t": "2026-09-24T01:44", "src": "Chat Widget", "name": "Yuki Ivanova", "email": "yuki.ivanova@inboxly.example", "et": "Free", "co": "Yarrowtun Money", "web": "", "country": "Turkey", "prod": "Lending - Credit Scoring", "msg": "Our team is building a lending product for small businesses. Need help with sandbox setup and credit rules. Timeline 2 to 3 months.", "pages": 4, "status": "Open", "bucket": "Nurture", "score": 38, "prob": 0.431925365643412, "reasons": "High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 0, "Email": 0, "Product": 15, "Engagement": 8, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0749", "t": "2026-09-24T03:43", "src": "Website Contact Form", "name": "Ravi Muller", "email": "ravi706@webmail.example", "et": "Free", "co": "", "web": "", "country": "South Korea", "prod": "Other", "msg": "test", "pages": 1, "status": "", "bucket": "Spam", "score": null, "prob": null, "reasons": "Flagged by spam rules", "flags": ["Very short message"], "pts": {"Source": 10, "Email": 0, "Product": 0, "Engagement": 0, "Buying intent": 0, "Negative intent": 0}}, {"id": "L-0750", "t": "2026-09-24T05:42", "src": "Event", "name": "Omar Silva", "email": "omar.silva@freemail.example", "et": "Free", "co": "Tarnvale Money", "web": "", "country": "Brazil", "prod": "Banking Data API", "msg": "We raised a seed round and plan to launch a digital savings platform for SMEs. Want to discuss infrastructure.", "pages": 4, "status": "Open", "bucket": "Nurture", "score": 43, "prob": 0.330925973748733, "reasons": "Buying intent in message.", "flags": [], "pts": {"Source": 15, "Email": 0, "Product": 5, "Engagement": 8, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0751", "t": "2026-09-24T07:42", "src": "Docs Signup", "name": "Nadia Ivanova", "email": "nadia.ivanova@plumeridgefinance.example", "et": "Company", "co": "Plumeridge Finance", "web": "https://plumeridgefinance.example", "country": "Singapore", "prod": "Payments - Card Issuing", "msg": "We raised a seed round and plan to launch a digital savings platform for SMEs. Want to discuss infrastructure.", "pages": 3, "status": "Open", "bucket": "Warm", "score": 55, "prob": 0.24397660166495, "reasons": "Company email. High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 5, "Email": 20, "Product": 15, "Engagement": 0, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0754", "t": "2026-09-24T09:41", "src": "Pricing Page Form", "name": "Ananya Nguyen", "email": "ananya.nguyen@hollowquaybank.example", "et": "Company", "co": "Hollowquay Bank", "web": "https://hollowquaybank.example", "country": "Vietnam", "prod": "Payments - Cross-Border", "msg": "Migrating from another provider for our card program, need a quote this month.", "pages": 11, "status": "Open", "bucket": "Hot", "score": 90, "prob": 0.997793194411506, "reasons": "Strong source. Company email. High-value product. High engagement. Buying intent in message.", "flags": [], "pts": {"Source": 25, "Email": 20, "Product": 15, "Engagement": 15, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0755", "t": "2026-09-24T11:40", "src": "Docs Signup", "name": "Lucas Berg", "email": "lucas.berg@postbox.example", "et": "Free", "co": "Ostrivo Pay", "web": "", "country": "UK", "prod": "Other", "msg": "Just exploring, what does your company do?", "pages": 4, "status": "", "bucket": "Nurture", "score": -17, "prob": 0.00748010669552435, "reasons": "Negative intent in message.", "flags": [], "pts": {"Source": 5, "Email": 0, "Product": 0, "Engagement": 8, "Buying intent": 0, "Negative intent": -30}}, {"id": "L-0762", "t": "2026-09-24T13:39", "src": "Website Contact Form", "name": "Mateo Costa", "email": "mateo823@codewhistleoutsourcing.example", "et": "Company", "co": "Codewhistle Outsourcing", "web": "https://codewhistleoutsourcing.example", "country": "Switzerland", "prod": "Payments - Card Issuing", "msg": "Get your app listing on top review sites in 48 hours, guaranteed. Contact our listing agent.", "pages": 1, "status": "", "bucket": "Spam", "score": null, "prob": null, "reasons": "Flagged by spam rules", "flags": ["Vendor or scam wording"], "pts": {"Source": 10, "Email": 20, "Product": 15, "Engagement": 0, "Buying intent": 0, "Negative intent": 0}}, {"id": "L-0765", "t": "2026-09-24T15:38", "src": "Website Contact Form", "name": "Ethan Lee", "email": "ethan.lee@sallowfennstudio.example", "et": "Company", "co": "Sallowfenn Studio", "web": "https://sallowfennstudio.example", "country": "Switzerland", "prod": "Payments - Virtual Accounts", "msg": "Our team is building a lending product for small businesses. Need help with sandbox setup and credit rules. Timeline 2 to 3 months.", "pages": 6, "status": "Open", "bucket": "Warm", "score": 68, "prob": 0.830193605352031, "reasons": "Company email. High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 10, "Email": 20, "Product": 15, "Engagement": 8, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0767", "t": "2026-09-24T17:37", "src": "Pricing Page Form", "name": "Lina Novak", "email": "lina.novak@marrowgatepay.example", "et": "Company", "co": "Marrowgate Pay", "web": "https://marrowgatepay.example", "country": "Brazil", "prod": "Payments - Cross-Border", "msg": "Our team is building a lending product for small businesses. Need help with sandbox setup and credit rules. Timeline 2 to 3 months.", "pages": 3, "status": "Open", "bucket": "Hot", "score": 75, "prob": 0.425068639509415, "reasons": "Strong source. Company email. High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 25, "Email": 20, "Product": 15, "Engagement": 0, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0770", "t": "2026-09-24T19:36", "src": "Docs Signup", "name": "Hana Kim", "email": "hana.kim@zellowmarkwallet.example", "et": "Company", "co": "Zellowmark Wallet", "web": "https://zellowmarkwallet.example", "country": "UK", "prod": "Payments - Card Issuing", "msg": "Can you give a free account for our hackathon project?", "pages": 1, "status": "", "bucket": "Nurture", "score": 10, "prob": 0.00193830734701676, "reasons": "Company email. High-value product. Negative intent in message.", "flags": [], "pts": {"Source": 5, "Email": 20, "Product": 15, "Engagement": 0, "Buying intent": 0, "Negative intent": -30}}, {"id": "L-0771", "t": "2026-09-24T21:36", "src": "Website Contact Form", "name": "Tariq Khan", "email": "tariq.khan@rushbarrowcapital.example", "et": "Company", "co": "Rushbarrow Capital", "web": "https://rushbarrowcapital.example", "country": "Germany", "prod": "Payments - Cross-Border", "msg": "Evaluating cross-border providers for our remittance app. Can we get a demo and a cost comparison?", "pages": 9, "status": "Open", "bucket": "Hot", "score": 75, "prob": 0.98188973302063, "reasons": "Company email. High-value product. High engagement. Buying intent in message.", "flags": [], "pts": {"Source": 10, "Email": 20, "Product": 15, "Engagement": 15, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0773", "t": "2026-09-24T23:35", "src": "LinkedIn ABM", "name": "Ravi Haddad", "email": "ravi.haddad@postbox.example", "et": "Free", "co": "", "web": "", "country": "Singapore", "prod": "Payments - Card Issuing", "msg": "Are you hiring fintech developers? Please share openings.", "pages": 4, "status": "", "bucket": "Nurture", "score": 13, "prob": 0.0284429407154362, "reasons": "Strong source. High-value product. Negative intent in message.", "flags": [], "pts": {"Source": 20, "Email": 0, "Product": 15, "Engagement": 8, "Buying intent": 0, "Negative intent": -30}}, {"id": "L-0785", "t": "2026-09-25T01:34", "src": "Chat Widget", "name": "Nadia Kim", "email": "nadia.kim@brindlewickmoney.example", "et": "Company", "co": "Brindlewick Money", "web": "https://brindlewickmoney.example", "country": "Turkey", "prod": "Lending - Loan Origination", "msg": "We are launching a BNPL product and need a managed card issuing setup with go-live in Q3.", "pages": 4, "status": "Open", "bucket": "Warm", "score": 58, "prob": 0.647256158176589, "reasons": "Company email. High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 0, "Email": 20, "Product": 15, "Engagement": 8, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0788", "t": "2026-09-25T03:33", "src": "Pricing Page Form", "name": "Noah Tanaka", "email": "noah877@letterdrop.example", "et": "Free", "co": "Listpeak Directory", "web": "", "country": "India", "prod": "Other", "msg": "We are a dev agency from offshore, 20 fintech developers available at low rates.", "pages": 2, "status": "", "bucket": "Spam", "score": null, "prob": null, "reasons": "Flagged by spam rules", "flags": ["Vendor or scam wording"], "pts": {"Source": 25, "Email": 0, "Product": 0, "Engagement": 0, "Buying intent": 0, "Negative intent": 0}}, {"id": "L-0796", "t": "2026-09-25T05:32", "src": "Docs Signup", "name": "Omar Haddad", "email": "omar.haddad@freemail.example", "et": "Free", "co": "Vexmoor Studio", "web": "", "country": "India", "prod": "Payments - Virtual Accounts", "msg": "Evaluating virtual accounts providers for our BNPL app. Can we get a demo and a cost comparison?", "pages": 10, "status": "Open", "bucket": "Warm", "score": 50, "prob": 0.973454736614454, "reasons": "High-value product. High engagement. Buying intent in message.", "flags": [], "pts": {"Source": 5, "Email": 0, "Product": 15, "Engagement": 15, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0797", "t": "2026-09-25T07:31", "src": "Website Contact Form", "name": "Lucas Ivanova", "email": "lucas817@webmail.example", "et": "Free", "co": "", "web": "", "country": "Nigeria", "prod": "Other", "msg": "We offer premium SEO backlinks and guest post services for fintech websites. Reply for rates.", "pages": 2, "status": "", "bucket": "Spam", "score": null, "prob": null, "reasons": "Flagged by spam rules", "flags": ["Vendor or scam wording"], "pts": {"Source": 10, "Email": 0, "Product": 0, "Engagement": 0, "Buying intent": 0, "Negative intent": 0}}, {"id": "L-0798", "t": "2026-09-25T09:30", "src": "Chat Widget", "name": "Ji-woo Nguyen", "email": "ji-woo.nguyen@letterdrop.example", "et": "Free", "co": "Rushbarrow Capital", "web": "", "country": "Nigeria", "prod": "Payments - Cross-Border", "msg": "Migrating from another provider for our card program, need a quote this month.", "pages": 6, "status": "Open", "bucket": "Nurture", "score": 38, "prob": 0.597485765827016, "reasons": "High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 0, "Email": 0, "Product": 15, "Engagement": 8, "Buying intent": 15, "Negative intent": 0}}, {"id": "L-0800", "t": "2026-09-25T11:30", "src": "LinkedIn ABM", "name": "Zara Nguyen", "email": "zara.nguyen@ferrowindcapital.example", "et": "Company", "co": "Ferrowind Capital", "web": "https://ferrowindcapital.example", "country": "Brazil", "prod": "Payments - Virtual Accounts", "msg": "Evaluating virtual accounts providers for our BNPL app. Can we get a demo and a cost comparison?", "pages": 2, "status": "Open", "bucket": "Hot", "score": 70, "prob": 0.321911750448372, "reasons": "Strong source. Company email. High-value product. Buying intent in message.", "flags": [], "pts": {"Source": 20, "Email": 20, "Product": 15, "Engagement": 0, "Buying intent": 15, "Negative intent": 0}}], "hist": {"buckets": [{"b": "Hot", "leads": 153, "rate": 0.917647058823529, "share": 0.702702702702703}, {"b": "Warm", "leads": 109, "rate": 0.576923076923077, "share": 0.27027027027027}, {"b": "Nurture", "leads": 286, "rate": 0.0157068062827225, "share": 0.027027027027027}], "top20": 0.567567567567568, "gateMiss": 0, "calib": [{"band": "0% to 20%", "n": 192, "pred": 0.0172551696766548, "act": 0}, {"band": "20% to 40%", "n": 18, "pred": 0.310659497974356, "act": 0.333333333333333}, {"band": "40% to 60%", "n": 14, "pred": 0.49069149894517, "act": 0.785714285714286}, {"band": "60% to 80%", "n": 19, "pred": 0.7013773444974, "act": 0.631578947368421}, {"band": "80% to 100%", "n": 85, "pred": 0.963398907831439, "act": 0.964705882352941}], "respAll": 24.8635846372688, "within2": 0.027027027027027, "spamShare": 0.286259541984733}};
+const NOW = new Date("2026-09-25T12:00");
+const SLA = {Hot:2, Warm:24};
+const COLOR = {Hot:"var(--hot)",Warm:"var(--warm)",Nurture:"var(--nurture)",Spam:"var(--quar)"};
+const BG = {Hot:"var(--hot-bg)",Warm:"var(--warm-bg)",Nurture:"var(--nurture-bg)",Spam:"var(--quar-bg)"};
+const state = {view:"queue", bucket:"Hot", sel:null, log:[], flagOpen:false};
+const leads = DATA.leads.map(l => ({...l, done:null}));
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct = p => p == null ? "n/a" : (p < 0.01 ? "<1%" : p > 0.99 ? ">99%" : Math.round(p*100) + "%");
+const hoursSince = t => (NOW - new Date(t)) / 36e5;
+function waited(t){
+  const h = hoursSince(t);
+  if (h < 1) return Math.round(h*60) + " min";
+  if (h < 48) return Math.round(h) + " h";
+  return Math.round(h/24) + " days";
+}
+function slaText(l){
+  if (l.bucket === "Nurture") return `<span>Email sequence</span><small>No call needed</small>`;
+  const h = hoursSince(l.t), lim = SLA[l.bucket];
+  if (h > lim) return `<span class="late">Overdue</span><small>Waiting ${waited(l.t)}</small>`;
+  const left = lim - h;
+  return `<span class="fine">${left < 1 ? Math.round(left*60)+" min" : Math.round(left)+" h"} left</span><small>Waiting ${waited(l.t)}</small>`;
+}
+function odds(p){
+  if (p == null) return "";
+  const n = Math.round(p*10);
+  if (n <= 0) return "Fewer than 1 in 10 similar leads reached a qualified opportunity.";
+  if (n >= 10) return "Almost every similar lead reached a qualified opportunity.";
+  return `About ${n} in 10 similar leads reached a qualified opportunity.`;
+}
+const active = b => leads.filter(l => !l.done && l.bucket === b);
+
+function counts(){
+  $("#n-queue").textContent = ["Hot","Warm","Nurture"].reduce((a,b) => a + active(b).length, 0);
+  $("#n-quar").textContent = active("Spam").length;
+  $("#n-log").textContent = state.log.length || "";
+  document.querySelectorAll(".navbtn").forEach(b => b.setAttribute("aria-current", b.dataset.view === state.view));
+}
+
+function renderQueue(){
+  const rows = active(state.bucket).sort((a,b) => (b.prob ?? 0) - (a.prob ?? 0));
+  const seg = ["Hot","Warm","Nurture"].map(b =>
+    `<button data-bucket="${b}" aria-pressed="${state.bucket===b}"><span class="dot" style="background:${COLOR[b]}"></span>${b} <span class="n">${active(b).length}</span></button>`).join("");
+  const intro = {Hot:"Call these first. Target reply within 2 hours.", Warm:"Work these once Hot is clear. Target reply within 1 business day.", Nurture:"Low likelihood. These get an automated email sequence and move up if they engage again."}[state.bucket];
+  const list = rows.length ? rows.map(l => `
+    <button class="row" data-id="${l.id}" aria-selected="${state.sel===l.id}">
+      <span class="stripe" style="background:${COLOR[l.bucket]}"></span>
+      <span>
+        <div class="who">${esc(l.name)}${l.co ? ` <span>at ${esc(l.co)}</span>` : ""}</div>
+        <div class="meta">${esc(l.src)}, ${esc(l.prod)}</div>
+        <div class="why">${esc(l.reasons || "No strong signals")}</div>
+      </span>
+      <span class="likely"><b>${pct(l.prob)}</b><small>likely to qualify</small>
+        <div class="bar"><i style="width:${Math.max(2,(l.prob||0)*100)}%;background:${COLOR[l.bucket]}"></i></div></span>
+      <span class="wait">${slaText(l)}</span>
+    </button>`).join("") : `<div class="empty">Nothing left in ${state.bucket}. Every lead here has an outcome.</div>`;
+  $("#main").innerHTML = `<h1>Who to contact next</h1><p class="sub">${intro}</p><div class="seg" role="group" aria-label="Priority">${seg}</div><div class="list">${list}</div>
+  <p class="foot">Arrival times are compressed into the last three days for the demo. Actions are kept for this session only.</p>`;
+}
+
+function renderQuarantine(){
+  const rows = active("Spam");
+  const list = rows.length ? rows.map(l => `
+    <div class="qrow">
+      <div>
+        <div class="who">${esc(l.name)}${l.co ? ` <span>at ${esc(l.co)}</span>` : ""}</div>
+        <div class="meta">${esc(l.email)}, ${esc(l.src)}</div>
+        <p>"${esc(l.msg)}"</p>
+        <div class="chips">${l.flags.map(f => `<span class="chip">${esc(f)}</span>`).join("")}</div>
+      </div>
+      <div class="qbtns">
+        <button class="btn" data-release="${l.id}">Release to queue</button>
+        <button class="btn" data-confirm="${l.id}">Confirm spam</button>
+      </div>
+    </div>`).join("") : `<div class="empty">Quarantine is clear.</div>`;
+  $("#main").innerHTML = `<h1>Quarantine</h1><p class="sub">Leads the spam rules held back. Nothing here is deleted. Release anything real and it goes to Warm for a human look, and the release is logged as a rule miss.</p><div class="list">${list}</div>`;
+}
+
+function renderHealth(){
+  const H = DATA.hist;
+  const bars = H.buckets.map(b => `<div class="hbar"><span>${b.b}</span><span class="track"><i style="width:${b.rate*100}%;background:${COLOR[b.b]}"></i></span><span class="v">${pct(b.rate)}</span></div>`).join("");
+  const cal = H.calib.map(c => `<div class="cal"><span>${c.band}</span><span class="track"><i class="p" style="width:${(c.pred||0)*100}%"></i><i class="a" style="width:${(c.act||0)*100}%"></i></span><span>${pct(c.pred)} vs ${pct(c.act)} <small style="color:var(--ink3)">(${c.n})</small></span></div>`).join("");
+  const log = state.log.length ? `<ul class="log">${state.log.map(x => `<li><b>${esc(x.what)}</b>, ${esc(x.name)}${x.detail ? `. ${esc(x.detail)}` : ""}</li>`).join("")}</ul>` : `<p class="sub" style="margin:0">No feedback yet. Mark outcomes or flag a score in the queue and it shows up here.</p>`;
+  $("#main").innerHTML = `<h1>Model health</h1><p class="sub">Is the score still telling the truth? Based on all leads with a recorded outcome.</p>
+  <div class="grid2">
+    <div class="card"><h2>Qualification rate by bucket</h2>${bars}<p class="note">Hot holds ${pct(H.buckets[0].share)} of all qualified leads. The top 20% of scores hold ${pct(H.top20)}, against a target of 50%.</p></div>
+    <div class="card"><h2>Does the probability match reality?</h2>${cal}<div class="legend"><span style="--c:var(--ink3)">Predicted</span><span style="--c:var(--brand)">Actual</span></div><p class="note">Bars close together mean the percentage can be trusted. Small bands are noisy.</p></div>
+    <div class="card"><h2>Baseline before scoring</h2><div class="stats">
+      <div><span class="stat">${Math.round(H.respAll)} h</span><small>average first reply</small></div>
+      <div><span class="stat">${pct(H.within2)}</span><small>of qualified leads answered within 2 h</small></div>
+      <div><span class="stat">${pct(H.spamShare)}</span><small>of tagged leads were spam</small></div>
+      <div><span class="stat">${H.gateMiss}</span><small>qualified leads caught by the spam gate</small></div></div></div>
+    <div class="card"><h2>Feedback this session</h2>${log}<p class="note">Every outcome and flag becomes a training label at the next retrain.</p></div>
+  </div>`;
+}
+
+function renderPanel(){
+  const p = $("#panel");
+  const l = leads.find(x => x.id === state.sel);
+  if (!l){ p.classList.remove("open"); p.setAttribute("aria-hidden","true"); return; }
+  const pts = Object.entries(l.pts).filter(([k,v]) => v !== 0).map(([k,v]) =>
+    `<tr><td>${k}</td><td class="num ${v>0?'pos':'neg'}">${v>0?'+':''}${v}</td></tr>`).join("");
+  p.innerHTML = `
+    <button class="close" data-close>Close</button>
+    <span class="tag" style="background:${BG[l.bucket]};color:${COLOR[l.bucket]}">${l.bucket}</span>
+    <h1 style="margin-top:12px">${esc(l.name)}</h1>
+    <div class="meta" style="font-size:14px">${l.co ? esc(l.co) + ", " : ""}${esc(l.country)}</div>
+    <div class="big"><b>${pct(l.prob)}</b><span>likely to qualify</span></div>
+    <p class="explain">${odds(l.prob)}</p>
+    <blockquote>${esc(l.msg)}</blockquote>
+    <h3>Why this score</h3>
+    <table>${pts || '<tr><td>No signals scored</td><td></td></tr>'}<tr><td><b>Points total</b></td><td class="num">${l.score ?? "n/a"}</td></tr></table>
+    <h3>Details</h3>
+    <dl><dt>Source</dt><dd>${esc(l.src)}</dd><dt>Interest</dt><dd>${esc(l.prod)}</dd><dt>Email</dt><dd>${esc(l.email)}</dd>
+      <dt>Pages seen</dt><dd>${l.pages}</dd><dt>Waiting</dt><dd>${waited(l.t)}</dd><dt>Lead ID</dt><dd>${esc(l.id)}</dd></dl>
+    <div class="actions">
+      <button class="btn primary" data-outcome="Qualified">Mark qualified</button>
+      <button class="btn" data-outcome="Unqualified">Mark unqualified</button>
+      <button class="btn" data-flag>Flag this score</button>
+    </div>
+    <div class="flagbox ${state.flagOpen?'show':''}" id="flagbox">
+      <label>What's off?<select id="f-dir"><option>Score is too high</option><option>Score is too low</option></select></label>
+      <label>Main reason<select id="f-why"><option>Wrong company fit</option><option>Real buyer, weak form message</option><option>Not a decision maker</option><option>Budget or timeline mismatch</option><option>Other</option></select></label>
+      <label>Note (optional)<textarea id="f-note" rows="2"></textarea></label>
+      <button class="btn primary" data-sendflag>Save flag</button>
+    </div>`;
+  p.classList.add("open"); p.setAttribute("aria-hidden","false");
+}
+
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("show"), 1800);
+}
+function render(){
+  counts();
+  ({queue:renderQueue, quarantine:renderQuarantine, health:renderHealth})[state.view]();
+  renderPanel();
+}
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("button"); if (!t) return;
+  const d = t.dataset;
+  if (d.view){ state.view = d.view; state.sel = null; render(); return; }
+  if (d.bucket){ state.bucket = d.bucket; state.sel = null; render(); return; }
+  if (d.id){ state.sel = d.id; state.flagOpen = false; render(); return; }
+  if ("close" in d){ state.sel = null; render(); return; }
+  const l = leads.find(x => x.id === state.sel);
+  if (d.outcome && l){
+    l.done = d.outcome; state.log.unshift({what:"Marked " + d.outcome.toLowerCase(), name:l.name, detail:`Model said ${pct(l.prob)}`});
+    state.sel = null; toast(`Marked ${d.outcome.toLowerCase()}`); render(); return;
+  }
+  if ("flag" in d){ state.flagOpen = !state.flagOpen; $("#flagbox").classList.toggle("show", state.flagOpen); return; }
+  if ("sendflag" in d && l){
+    const note = $("#f-note").value.trim();
+    state.log.unshift({what:"Flagged score", name:l.name, detail:`${$("#f-dir").value}, ${$("#f-why").value}${note ? ", " + note : ""}`});
+    state.flagOpen = false; toast("Flag saved"); render(); return;
+  }
+  if (d.release){
+    const q = leads.find(x => x.id === d.release);
+    q.bucket = "Warm"; q.reasons = "Released from quarantine by a reviewer";
+    state.log.unshift({what:"Released from quarantine", name:q.name, detail:`Rules flagged ${q.flags.join(", ").toLowerCase()}`});
+    toast("Released to Warm"); render(); return;
+  }
+  if (d.confirm){
+    const q = leads.find(x => x.id === d.confirm);
+    q.done = "Spam"; state.log.unshift({what:"Confirmed spam", name:q.name});
+    toast("Confirmed spam"); render(); return;
+  }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && state.sel){ state.sel = null; render(); } });
+$("#clock").textContent = "Demo clock: 25 Sep 2026, 12:00";
+render();
+</script>
+</body>
+</html>
